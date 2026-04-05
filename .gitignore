@@ -1,0 +1,33 @@
+# Binaries
+bin/
+*.exe
+*.out
+
+# Environment
+.env
+.env.local
+.env.*.local
+secrets/
+
+# Go test cache & coverage
+*.test
+*.prof
+coverage.out
+coverage.html
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes / local data
+postgres-data/
+minio-data/
+
+# Railway / deployment artifacts
+railway.toml.local
