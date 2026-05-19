@@ -58,7 +58,7 @@ func (ro *Router) Build() http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public — no auth required
 		r.Post("/auth/apple", ro.authHandler.AppleSignIn)
-		r.Post("/webhooks/replicate", ro.generationHandler.ReplicateWebhook)
+		r.Post("/webhooks/imagegen/{provider}", ro.generationHandler.ImageGenWebhook)
 		r.Post("/webhooks/print-partner", ro.orderHandler.PrintPartnerWebhook)
 		r.Get("/tokens/products", ro.tokenHandler.GetProducts)
 

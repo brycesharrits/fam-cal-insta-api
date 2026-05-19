@@ -3,6 +3,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -10,18 +11,21 @@ import (
 
 	apimiddleware "github.com/brycesharrits/fam-cal-insta/internal/api/middleware"
 	"github.com/brycesharrits/fam-cal-insta/internal/domain"
+	"github.com/brycesharrits/fam-cal-insta/internal/imagegen"
 	"github.com/brycesharrits/fam-cal-insta/internal/jobs"
 	"github.com/brycesharrits/fam-cal-insta/internal/repository"
 )
 
 type GenerationHandler struct {
-	projectRepo   repository.ProjectRepository
-	monthRepo     repository.MonthRepository
-	jobRepo       repository.GenerationJobRepository
-	tokenRepo     repository.TokenRepository
-	genWorker     *jobs.GenerationWorker
-	fullGenCost   int
-	singleGenCost int
+	projectRepo     repository.ProjectRepository
+	monthRepo       repository.MonthRepository
+	jobRepo         repository.GenerationJobRepository
+	tokenRepo       repository.TokenRepository
+	genWorker       *jobs.GenerationWorker
+	webhookAdapters map[string]imagegen.WebhookAdapter
+	webhookSecrets  map[string]string
+	fullGenCost     int
+	singleGenCost   int
 }
 
 func NewGenerationHandler(
@@ -30,16 +34,20 @@ func NewGenerationHandler(
 	jobRepo repository.GenerationJobRepository,
 	tokenRepo repository.TokenRepository,
 	genWorker *jobs.GenerationWorker,
+	webhookAdapters map[string]imagegen.WebhookAdapter,
+	webhookSecrets map[string]string,
 	fullGenCost, singleGenCost int,
 ) *GenerationHandler {
 	return &GenerationHandler{
-		projectRepo:   projectRepo,
-		monthRepo:     monthRepo,
-		jobRepo:       jobRepo,
-		tokenRepo:     tokenRepo,
-		genWorker:     genWorker,
-		fullGenCost:   fullGenCost,
-		singleGenCost: singleGenCost,
+		projectRepo:     projectRepo,
+		monthRepo:       monthRepo,
+		jobRepo:         jobRepo,
+		tokenRepo:       tokenRepo,
+		genWorker:       genWorker,
+		webhookAdapters: webhookAdapters,
+		webhookSecrets:  webhookSecrets,
+		fullGenCost:     fullGenCost,
+		singleGenCost:   singleGenCost,
 	}
 }
 
@@ -233,38 +241,50 @@ func (h *GenerationHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /api/v1/webhooks/replicate
-// Called by Replicate when a prediction completes.
-func (h *GenerationHandler) ReplicateWebhook(w http.ResponseWriter, r *http.Request) {
-	var payload struct {
-		ID     string   `json:"id"` // prediction ID
-		Status string   `json:"status"`
-		Output []string `json:"output"`
-		Error  string   `json:"error"`
+// POST /api/v1/webhooks/imagegen/{provider}
+// Called by an image generation provider when a job changes state.
+// Provider-specific parsing + signature verification lives in WebhookAdapter
+// implementations; this handler stays provider-agnostic.
+func (h *GenerationHandler) ImageGenWebhook(w http.ResponseWriter, r *http.Request) {
+	provider := chi.URLParam(r, "provider")
+	adapter, ok := h.webhookAdapters[provider]
+	if !ok {
+		writeError(w, http.StatusNotFound, "unknown provider")
+		return
 	}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+
+	secret := h.webhookSecrets[provider]
+	if err := adapter.VerifySignature(r, secret); err != nil {
+		slog.Warn("imagegen webhook signature verification failed", "provider", provider, "error", err)
+		writeError(w, http.StatusUnauthorized, "invalid signature")
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid payload")
+		return
+	}
+	evt, err := adapter.ParseEvent(body)
+	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
 
-	job, err := h.jobRepo.FindByReplicatePredictionID(r.Context(), payload.ID)
+	job, err := h.jobRepo.FindByProviderJobID(r.Context(), provider, evt.ProviderJobID)
 	if err != nil || job == nil {
-		// Unknown prediction — could be from a different environment
+		// Unknown job — could be from a different environment. Acknowledge silently.
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	switch payload.Status {
-	case "succeeded":
-		if len(payload.Output) > 0 {
-			// The generation worker handles downloading + S3 storage.
-			// The webhook just re-enqueues the job to complete the storage step.
-			// In practice, the worker's poll loop will also catch this —
-			// the webhook is a faster signal.
-			slog.Info("replicate webhook: prediction succeeded", "prediction_id", payload.ID, "job_id", job.ID)
-		}
-	case "failed", "canceled":
-		_ = h.jobRepo.UpdateStatus(r.Context(), job.ID, domain.JobStatusFailed, "", payload.Error)
+	switch evt.Status {
+	case domain.JobStatusComplete:
+		// Worker's poll loop handles download + S3 storage. The webhook here is
+		// informational; promoting it to the fast path is a separate change.
+		slog.Info("imagegen webhook: job completed", "provider", provider, "provider_job_id", evt.ProviderJobID, "job_id", job.ID)
+	case domain.JobStatusFailed:
+		_ = h.jobRepo.UpdateStatus(r.Context(), job.ID, domain.JobStatusFailed, "", evt.ErrorMessage)
 		_ = h.monthRepo.UpdateGeneratedImage(r.Context(), job.MonthID, "", domain.MonthStatusFailed)
 	}
 

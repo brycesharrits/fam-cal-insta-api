@@ -32,10 +32,10 @@ type MonthRepository interface {
 type GenerationJobRepository interface {
 	Create(ctx context.Context, job *domain.GenerationJob) error
 	FindByID(ctx context.Context, id string) (*domain.GenerationJob, error)
-	FindByReplicatePredictionID(ctx context.Context, predictionID string) (*domain.GenerationJob, error)
+	FindByProviderJobID(ctx context.Context, provider, providerJobID string) (*domain.GenerationJob, error)
 	FindByCalendarID(ctx context.Context, calendarID string) ([]*domain.GenerationJob, error)
 	UpdateStatus(ctx context.Context, id string, status domain.JobStatus, resultURL, errMsg string) error
-	UpdatePredictionID(ctx context.Context, id, predictionID string) error
+	UpdateProviderJobID(ctx context.Context, id, provider, providerJobID string) error
 }
 
 type TokenRepository interface {

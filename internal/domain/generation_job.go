@@ -17,7 +17,8 @@ type GenerationJob struct {
 	CalendarID            string    `db:"calendar_id"`
 	MonthID               string    `db:"month_id"`
 	Status                JobStatus `db:"status"`
-	ReplicatePredictionID string    `db:"replicate_prediction_id"`
+	Provider              string    `db:"provider"`
+	ProviderJobID         string    `db:"provider_job_id"`
 	ResultImageURL        string    `db:"result_image_url"`
 	ErrorMessage          string    `db:"error_message"`
 	CreatedAt             time.Time `db:"created_at"`

@@ -22,9 +22,10 @@ type Config struct {
 	JWTSecret string
 	JWTExpiry time.Duration
 
-	ReplicateAPIKey     string
-	ReplicateFluxModel  string
-	ReplicateWebhookURL string
+	ReplicateAPIKey       string
+	ReplicateFluxModel    string
+	ReplicateWebhookURL   string
+	ReplicateWebhookSecret string
 
 	S3Endpoint  string
 	S3Bucket    string
@@ -58,9 +59,10 @@ func Load() (*Config, error) {
 		JWTSecret: requireEnv("JWT_SECRET"),
 		JWTExpiry: time.Duration(jwtExpiryHours) * time.Hour,
 
-		ReplicateAPIKey:     requireEnv("REPLICATE_API_KEY"),
-		ReplicateFluxModel:  getEnv("REPLICATE_FLUX_MODEL", "black-forest-labs/flux-1.1-pro"),
-		ReplicateWebhookURL: getEnv("REPLICATE_WEBHOOK_URL", ""),
+		ReplicateAPIKey:        requireEnv("REPLICATE_API_KEY"),
+		ReplicateFluxModel:     getEnv("REPLICATE_FLUX_MODEL", "black-forest-labs/flux-1.1-pro"),
+		ReplicateWebhookURL:    getEnv("REPLICATE_WEBHOOK_URL", ""),
+		ReplicateWebhookSecret: getEnv("REPLICATE_WEBHOOK_SECRET", ""),
 
 		S3Endpoint:  getEnv("S3_ENDPOINT", ""),
 		S3Bucket:    requireEnv("S3_BUCKET"),

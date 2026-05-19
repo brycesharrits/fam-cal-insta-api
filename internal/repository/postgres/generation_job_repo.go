@@ -18,6 +18,26 @@ func NewGenerationJobRepo(db *pgxpool.Pool) *GenerationJobRepo {
 	return &GenerationJobRepo{db: db}
 }
 
+const generationJobColumns = `id, user_id, calendar_id, month_id, status, provider, provider_job_id, result_image_url, error_message, created_at, updated_at`
+
+func scanGenerationJob(row pgx.Row, job *domain.GenerationJob) error {
+	var provider, providerJobID *string
+	if err := row.Scan(
+		&job.ID, &job.UserID, &job.CalendarID, &job.MonthID, &job.Status,
+		&provider, &providerJobID,
+		&job.ResultImageURL, &job.ErrorMessage, &job.CreatedAt, &job.UpdatedAt,
+	); err != nil {
+		return err
+	}
+	if provider != nil {
+		job.Provider = *provider
+	}
+	if providerJobID != nil {
+		job.ProviderJobID = *providerJobID
+	}
+	return nil
+}
+
 func (r *GenerationJobRepo) Create(ctx context.Context, job *domain.GenerationJob) error {
 	query := `
 		INSERT INTO generation_jobs (user_id, calendar_id, month_id, status)
@@ -28,25 +48,20 @@ func (r *GenerationJobRepo) Create(ctx context.Context, job *domain.GenerationJo
 }
 
 func (r *GenerationJobRepo) FindByID(ctx context.Context, id string) (*domain.GenerationJob, error) {
-	query := `SELECT id, user_id, calendar_id, month_id, status, replicate_prediction_id, result_image_url, error_message, created_at, updated_at FROM generation_jobs WHERE id = $1`
 	job := &domain.GenerationJob{}
-	err := r.db.QueryRow(ctx, query, id).Scan(
-		&job.ID, &job.UserID, &job.CalendarID, &job.MonthID, &job.Status,
-		&job.ReplicatePredictionID, &job.ResultImageURL, &job.ErrorMessage, &job.CreatedAt, &job.UpdatedAt,
-	)
+	err := scanGenerationJob(r.db.QueryRow(ctx, `SELECT `+generationJobColumns+` FROM generation_jobs WHERE id = $1`, id), job)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	return job, err
 }
 
-func (r *GenerationJobRepo) FindByReplicatePredictionID(ctx context.Context, predictionID string) (*domain.GenerationJob, error) {
-	query := `SELECT id, user_id, calendar_id, month_id, status, replicate_prediction_id, result_image_url, error_message, created_at, updated_at FROM generation_jobs WHERE replicate_prediction_id = $1`
+func (r *GenerationJobRepo) FindByProviderJobID(ctx context.Context, provider, providerJobID string) (*domain.GenerationJob, error) {
 	job := &domain.GenerationJob{}
-	err := r.db.QueryRow(ctx, query, predictionID).Scan(
-		&job.ID, &job.UserID, &job.CalendarID, &job.MonthID, &job.Status,
-		&job.ReplicatePredictionID, &job.ResultImageURL, &job.ErrorMessage, &job.CreatedAt, &job.UpdatedAt,
-	)
+	err := scanGenerationJob(r.db.QueryRow(ctx,
+		`SELECT `+generationJobColumns+` FROM generation_jobs WHERE provider = $1 AND provider_job_id = $2`,
+		provider, providerJobID,
+	), job)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -54,8 +69,10 @@ func (r *GenerationJobRepo) FindByReplicatePredictionID(ctx context.Context, pre
 }
 
 func (r *GenerationJobRepo) FindByCalendarID(ctx context.Context, calendarID string) ([]*domain.GenerationJob, error) {
-	query := `SELECT id, user_id, calendar_id, month_id, status, replicate_prediction_id, result_image_url, error_message, created_at, updated_at FROM generation_jobs WHERE calendar_id = $1 ORDER BY created_at ASC`
-	rows, err := r.db.Query(ctx, query, calendarID)
+	rows, err := r.db.Query(ctx,
+		`SELECT `+generationJobColumns+` FROM generation_jobs WHERE calendar_id = $1 ORDER BY created_at ASC`,
+		calendarID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +81,7 @@ func (r *GenerationJobRepo) FindByCalendarID(ctx context.Context, calendarID str
 	var jobs []*domain.GenerationJob
 	for rows.Next() {
 		job := &domain.GenerationJob{}
-		if err := rows.Scan(&job.ID, &job.UserID, &job.CalendarID, &job.MonthID, &job.Status,
-			&job.ReplicatePredictionID, &job.ResultImageURL, &job.ErrorMessage, &job.CreatedAt, &job.UpdatedAt); err != nil {
+		if err := scanGenerationJob(rows, job); err != nil {
 			return nil, err
 		}
 		jobs = append(jobs, job)
@@ -81,10 +97,10 @@ func (r *GenerationJobRepo) UpdateStatus(ctx context.Context, id string, status 
 	return err
 }
 
-func (r *GenerationJobRepo) UpdatePredictionID(ctx context.Context, id, predictionID string) error {
+func (r *GenerationJobRepo) UpdateProviderJobID(ctx context.Context, id, provider, providerJobID string) error {
 	_, err := r.db.Exec(ctx,
-		`UPDATE generation_jobs SET replicate_prediction_id=$1, status='processing', updated_at=NOW() WHERE id=$2`,
-		predictionID, id,
+		`UPDATE generation_jobs SET provider=$1, provider_job_id=$2, status='processing', updated_at=NOW() WHERE id=$3`,
+		provider, providerJobID, id,
 	)
 	return err
 }

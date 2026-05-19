@@ -14,6 +14,7 @@ import (
 	v1 "github.com/brycesharrits/fam-cal-insta/internal/api/v1"
 	"github.com/brycesharrits/fam-cal-insta/internal/auth"
 	"github.com/brycesharrits/fam-cal-insta/internal/config"
+	"github.com/brycesharrits/fam-cal-insta/internal/imagegen"
 	"github.com/brycesharrits/fam-cal-insta/internal/imagegen/replicate"
 	"github.com/brycesharrits/fam-cal-insta/internal/jobs"
 	"github.com/brycesharrits/fam-cal-insta/internal/printpartner/mock"
@@ -62,6 +63,13 @@ func main() {
 
 	// Image generation
 	fluxProvider := replicate.NewFluxProvider(cfg.ReplicateAPIKey, cfg.ReplicateFluxModel)
+	replicateWebhookAdapter := replicate.NewWebhookAdapter()
+	webhookAdapters := map[string]imagegen.WebhookAdapter{
+		replicateWebhookAdapter.Name(): replicateWebhookAdapter,
+	}
+	webhookSecrets := map[string]string{
+		replicateWebhookAdapter.Name(): cfg.ReplicateWebhookSecret,
+	}
 	promptBuilder := service.NewPromptBuilder()
 
 	// Print partner (mock until real partner is selected)
@@ -77,6 +85,7 @@ func main() {
 	projectHandler := v1.NewProjectHandler(projectRepo, monthRepo)
 	generationHandler := v1.NewGenerationHandler(
 		projectRepo, monthRepo, jobRepo, tokenRepo, genWorker,
+		webhookAdapters, webhookSecrets,
 		cfg.TokenCosts.FullCalendarGeneration,
 		cfg.TokenCosts.SingleMonthRegeneration,
 	)

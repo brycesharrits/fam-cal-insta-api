@@ -96,8 +96,8 @@ func (g *GenerationWorker) processJob(ctx context.Context, jobID string) error {
 		return fmt.Errorf("submitting to replicate: %w", err)
 	}
 
-	if err := g.jobRepo.UpdatePredictionID(ctx, jobID, predID); err != nil {
-		return fmt.Errorf("storing prediction id: %w", err)
+	if err := g.jobRepo.UpdateProviderJobID(ctx, jobID, g.provider.ProviderName(), predID); err != nil {
+		return fmt.Errorf("storing provider job id: %w", err)
 	}
 
 	// Poll for result (webhook is the preferred path, polling is the fallback)
