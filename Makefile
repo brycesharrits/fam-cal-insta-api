@@ -1,6 +1,12 @@
 BINARY=famcal-server
 MODULE=github.com/brycesharrits/fam-cal-insta
 
+# Load .env for targets that need DATABASE_URL etc. (only if present)
+ifneq (,$(wildcard .env))
+include .env
+export
+endif
+
 .PHONY: build run dev tidy migrate-up migrate-down docker-up docker-down
 
 build:

@@ -99,7 +99,7 @@ func (h *OrderHandler) SubmitPrintOrder(w http.ResponseWriter, r *http.Request) 
 		UserID:     userID,
 		CalendarID: projectID,
 		Partner:    h.printPartner.PartnerName(),
-		Status:     string(domain.OrderStatusPending),
+		Status:     domain.OrderStatusPending,
 	}
 	if err := h.orderRepo.Create(r.Context(), order); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create order")
