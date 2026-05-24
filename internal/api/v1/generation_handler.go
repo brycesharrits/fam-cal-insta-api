@@ -66,6 +66,31 @@ type generateResponse struct {
 	EstimatedSeconds int      `json:"estimated_seconds"`
 }
 
+// POST /api/v1/dev/generate
+// Temporary unauthenticated endpoint that returns a canned generateResponse.
+// Lets the iOS app verify the network round-trip before the real imagegen
+// pipeline is wired up. Remove once production generate flow is exercised
+// end-to-end from the client.
+func (h *GenerationHandler) DevGenerateStub(w http.ResponseWriter, r *http.Request) {
+	var req generateRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	count := len(req.Months)
+	if count == 0 {
+		count = 12
+	}
+	jobIDs := make([]string, count)
+	for i := 0; i < count; i++ {
+		jobIDs[i] = fmt.Sprintf("dev-job-%d", i+1)
+	}
+
+	slog.Info("dev generate stub hit", "month_count", count)
+	writeJSON(w, http.StatusAccepted, generateResponse{
+		JobIDs:           jobIDs,
+		EstimatedSeconds: 30,
+	})
+}
+
 // POST /api/v1/projects/:id/generate
 func (h *GenerationHandler) GenerateCalendar(w http.ResponseWriter, r *http.Request) {
 	userID, ok := apimiddleware.GetUserID(r.Context())

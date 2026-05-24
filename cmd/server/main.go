@@ -97,7 +97,7 @@ func main() {
 	)
 
 	// Router
-	router := api.NewRouter(authHandler, projectHandler, generationHandler, uploadHandler, tokenHandler, orderHandler, jwtSvc)
+	router := api.NewRouter(authHandler, projectHandler, generationHandler, uploadHandler, tokenHandler, orderHandler, jwtSvc, cfg.AppEnv)
 	handler := router.Build()
 
 	// HTTP server

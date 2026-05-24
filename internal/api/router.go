@@ -19,6 +19,7 @@ type Router struct {
 	tokenHandler      *v1.TokenHandler
 	orderHandler      *v1.OrderHandler
 	jwtSvc            *auth.JWTService
+	appEnv            string
 }
 
 func NewRouter(
@@ -29,6 +30,7 @@ func NewRouter(
 	tokenHandler *v1.TokenHandler,
 	orderHandler *v1.OrderHandler,
 	jwtSvc *auth.JWTService,
+	appEnv string,
 ) *Router {
 	return &Router{
 		authHandler:       authHandler,
@@ -38,6 +40,7 @@ func NewRouter(
 		tokenHandler:      tokenHandler,
 		orderHandler:      orderHandler,
 		jwtSvc:            jwtSvc,
+		appEnv:            appEnv,
 	}
 }
 
@@ -61,6 +64,10 @@ func (ro *Router) Build() http.Handler {
 		r.Post("/webhooks/imagegen/{provider}", ro.generationHandler.ImageGenWebhook)
 		r.Post("/webhooks/print-partner", ro.orderHandler.PrintPartnerWebhook)
 		r.Get("/tokens/products", ro.tokenHandler.GetProducts)
+
+		if ro.appEnv != "production" {
+			r.Post("/dev/generate", ro.generationHandler.DevGenerateStub)
+		}
 
 		// Authenticated routes
 		r.Group(func(r chi.Router) {
