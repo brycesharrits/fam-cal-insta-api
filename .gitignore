@@ -31,3 +31,6 @@ minio-data/
 
 # Railway / deployment artifacts
 railway.toml.local
+
+# Spike/PoC output
+spike-out/
