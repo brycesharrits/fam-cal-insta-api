@@ -66,6 +66,51 @@ func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// POST /api/v1/dev/auth
+// Temporary unauthenticated endpoint that upserts a fixed seed user and
+// returns a real JWT signed with the same key as production auth.
+// Lets the iOS app exercise authenticated endpoints in local dev without
+// real Apple Sign In. Gated to APP_ENV != "production" at the router.
+// Remove once real Apple Sign In is wired up end-to-end.
+func (h *AuthHandler) DevAuthSeed(w http.ResponseWriter, r *http.Request) {
+	const devAppleUserID = "dev-local-user"
+	const devEmail = "dev@famcalinsta.local"
+	const devTokenBalance = 100
+
+	user, err := h.userRepo.FindByAppleUserID(r.Context(), devAppleUserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if user == nil {
+		user = &domain.User{
+			AppleUserID:  devAppleUserID,
+			Email:        devEmail,
+			TokenBalance: devTokenBalance,
+		}
+		if err := h.userRepo.Create(r.Context(), user); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to create dev user")
+			return
+		}
+	}
+
+	token, err := h.jwtSvc.Sign(user.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to sign token")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, authResponse{
+		Token: token,
+		User: userDTO{
+			ID:           user.ID,
+			Email:        user.Email,
+			TokenBalance: user.TokenBalance,
+			CreatedAt:    user.CreatedAt,
+		},
+	})
+}
+
 // POST /api/v1/auth/apple
 func (h *AuthHandler) AppleSignIn(w http.ResponseWriter, r *http.Request) {
 	var req appleAuthRequest

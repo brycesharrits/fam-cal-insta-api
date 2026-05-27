@@ -67,6 +67,7 @@ func (ro *Router) Build() http.Handler {
 
 		if ro.appEnv != "production" {
 			r.Post("/dev/generate", ro.generationHandler.DevGenerateStub)
+			r.Post("/dev/auth", ro.authHandler.DevAuthSeed)
 		}
 
 		// Authenticated routes
