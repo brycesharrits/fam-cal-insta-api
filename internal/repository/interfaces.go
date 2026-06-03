@@ -53,3 +53,10 @@ type OrderRepository interface {
 	FindByUserID(ctx context.Context, userID string) ([]*domain.Order, error)
 	UpdateStatus(ctx context.Context, id, status, partnerOrderID, trackingURL string) error
 }
+
+// TestGenerationRepository backs the disposable Test Lab medium.
+// Delete this interface (and its impl) when the spike concludes.
+type TestGenerationRepository interface {
+	Create(ctx context.Context, t *domain.TestGeneration) error
+	FindByID(ctx context.Context, id string) (*domain.TestGeneration, error)
+}

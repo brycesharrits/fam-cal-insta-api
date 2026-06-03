@@ -15,6 +15,7 @@ import (
 	"github.com/brycesharrits/fam-cal-insta/internal/auth"
 	"github.com/brycesharrits/fam-cal-insta/internal/config"
 	"github.com/brycesharrits/fam-cal-insta/internal/imagegen"
+	"github.com/brycesharrits/fam-cal-insta/internal/imagegen/openai"
 	"github.com/brycesharrits/fam-cal-insta/internal/imagegen/replicate"
 	"github.com/brycesharrits/fam-cal-insta/internal/jobs"
 	"github.com/brycesharrits/fam-cal-insta/internal/printpartner/mock"
@@ -49,6 +50,7 @@ func main() {
 	jobRepo := postgres.NewGenerationJobRepo(db)
 	tokenRepo := postgres.NewTokenRepo(db)
 	orderRepo := postgres.NewOrderRepo(db)
+	testGenRepo := postgres.NewTestGenerationRepo(db)
 
 	// Auth
 	jwtSvc := auth.NewJWTService(cfg.JWTSecret, cfg.JWTExpiry)
@@ -96,8 +98,18 @@ func main() {
 		cfg.TokenCosts.PDFExport,
 	)
 
+	// Test Lab medium (disposable) — nil client if OPENAI_API_KEY isn't set;
+	// the handler returns 503 in that case.
+	var openaiClient *openai.Client
+	if cfg.OpenAIAPIKey != "" {
+		openaiClient = openai.NewClient(cfg.OpenAIAPIKey)
+	} else {
+		slog.Warn("OPENAI_API_KEY not set; Test Lab endpoint will return 503")
+	}
+	testGenHandler := v1.NewTestGenHandler(testGenRepo, openaiClient)
+
 	// Router
-	router := api.NewRouter(authHandler, projectHandler, generationHandler, uploadHandler, tokenHandler, orderHandler, jwtSvc, cfg.AppEnv)
+	router := api.NewRouter(authHandler, projectHandler, generationHandler, uploadHandler, tokenHandler, orderHandler, testGenHandler, jwtSvc, cfg.AppEnv)
 	handler := router.Build()
 
 	// HTTP server

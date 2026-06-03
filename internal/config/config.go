@@ -27,6 +27,9 @@ type Config struct {
 	ReplicateWebhookURL   string
 	ReplicateWebhookSecret string
 
+	// Test Lab medium only. Disposable.
+	OpenAIAPIKey string
+
 	S3Endpoint  string
 	S3Bucket    string
 	S3Region    string
@@ -63,6 +66,8 @@ func Load() (*Config, error) {
 		ReplicateFluxModel:     getEnv("REPLICATE_FLUX_MODEL", "black-forest-labs/flux-1.1-pro"),
 		ReplicateWebhookURL:    getEnv("REPLICATE_WEBHOOK_URL", ""),
 		ReplicateWebhookSecret: getEnv("REPLICATE_WEBHOOK_SECRET", ""),
+
+		OpenAIAPIKey: getEnv("OPENAI_API_KEY", ""),
 
 		S3Endpoint:  getEnv("S3_ENDPOINT", ""),
 		S3Bucket:    requireEnv("S3_BUCKET"),

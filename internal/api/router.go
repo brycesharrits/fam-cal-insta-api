@@ -18,6 +18,7 @@ type Router struct {
 	uploadHandler     *v1.UploadHandler
 	tokenHandler      *v1.TokenHandler
 	orderHandler      *v1.OrderHandler
+	testGenHandler    *v1.TestGenHandler
 	jwtSvc            *auth.JWTService
 	appEnv            string
 }
@@ -29,6 +30,7 @@ func NewRouter(
 	uploadHandler *v1.UploadHandler,
 	tokenHandler *v1.TokenHandler,
 	orderHandler *v1.OrderHandler,
+	testGenHandler *v1.TestGenHandler,
 	jwtSvc *auth.JWTService,
 	appEnv string,
 ) *Router {
@@ -39,6 +41,7 @@ func NewRouter(
 		uploadHandler:     uploadHandler,
 		tokenHandler:      tokenHandler,
 		orderHandler:      orderHandler,
+		testGenHandler:    testGenHandler,
 		jwtSvc:            jwtSvc,
 		appEnv:            appEnv,
 	}
@@ -101,6 +104,9 @@ func (ro *Router) Build() http.Handler {
 			r.Post("/projects/{id}/orders/print", ro.orderHandler.SubmitPrintOrder)
 			r.Post("/projects/{id}/orders/pdf-export", ro.orderHandler.ExportPDF)
 			r.Get("/orders/{id}", ro.orderHandler.GetOrder)
+
+			// Test Lab medium (disposable spike surface)
+			r.Post("/test/generate", ro.testGenHandler.Generate)
 		})
 	})
 
