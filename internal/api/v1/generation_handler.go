@@ -262,6 +262,7 @@ func (h *GenerationHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 		"result_image_url": job.ResultImageURL,
 		"error":            job.ErrorMessage,
 		"month_id":         job.MonthID,
+		"month":            job.Month,
 		"calendar_id":      job.CalendarID,
 	})
 }

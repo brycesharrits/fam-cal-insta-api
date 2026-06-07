@@ -82,9 +82,23 @@ func (g *GenerationWorker) processJob(ctx context.Context, jobID string) error {
 		prompt = month.Prompt // user-overridden prompt takes precedence
 	}
 
+	// reference_image_url may be either a full http(s) URL or an S3 object key
+	// (iOS uploads return the key from /uploads/presign). Providers like Replicate
+	// need a fetchable URL, so resolve keys to a short-lived signed download URL.
+	refURL := month.ReferenceImageURL
+	if !strings.HasPrefix(refURL, "http://") && !strings.HasPrefix(refURL, "https://") {
+		signed, err := g.storage.GetPresignedDownloadURL(ctx, refURL, time.Hour)
+		if err != nil {
+			_ = g.jobRepo.UpdateStatus(ctx, jobID, domain.JobStatusFailed, "", err.Error())
+			_ = g.monthRepo.UpdateGeneratedImage(ctx, job.MonthID, "", domain.MonthStatusFailed)
+			return fmt.Errorf("signing reference URL for %s: %w", refURL, err)
+		}
+		refURL = signed
+	}
+
 	// Submit to Replicate
 	predID, err := g.provider.GenerateAsync(ctx, imagegen.GenerationRequest{
-		ReferenceImageURL: month.ReferenceImageURL,
+		ReferenceImageURL: refURL,
 		Prompt:            prompt,
 		Width:             2400,
 		Height:            1800,

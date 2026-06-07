@@ -16,6 +16,7 @@ type GenerationJob struct {
 	UserID                string    `db:"user_id"`
 	CalendarID            string    `db:"calendar_id"`
 	MonthID               string    `db:"month_id"`
+	Month                 int       `db:"month"` // 1-12, joined from calendar_months
 	Status                JobStatus `db:"status"`
 	Provider              string    `db:"provider"`
 	ProviderJobID         string    `db:"provider_job_id"`

@@ -18,13 +18,18 @@ func NewGenerationJobRepo(db *pgxpool.Pool) *GenerationJobRepo {
 	return &GenerationJobRepo{db: db}
 }
 
-const generationJobColumns = `id, user_id, calendar_id, month_id, status, provider, provider_job_id, result_image_url, error_message, created_at, updated_at`
+const generationJobSelect = `
+	SELECT gj.id, gj.user_id, gj.calendar_id, gj.month_id, cm.month,
+	       gj.status, gj.provider, gj.provider_job_id,
+	       gj.result_image_url, gj.error_message, gj.created_at, gj.updated_at
+	FROM generation_jobs gj
+	JOIN calendar_months cm ON cm.id = gj.month_id`
 
 func scanGenerationJob(row pgx.Row, job *domain.GenerationJob) error {
 	var provider, providerJobID *string
 	if err := row.Scan(
-		&job.ID, &job.UserID, &job.CalendarID, &job.MonthID, &job.Status,
-		&provider, &providerJobID,
+		&job.ID, &job.UserID, &job.CalendarID, &job.MonthID, &job.Month,
+		&job.Status, &provider, &providerJobID,
 		&job.ResultImageURL, &job.ErrorMessage, &job.CreatedAt, &job.UpdatedAt,
 	); err != nil {
 		return err
@@ -49,7 +54,7 @@ func (r *GenerationJobRepo) Create(ctx context.Context, job *domain.GenerationJo
 
 func (r *GenerationJobRepo) FindByID(ctx context.Context, id string) (*domain.GenerationJob, error) {
 	job := &domain.GenerationJob{}
-	err := scanGenerationJob(r.db.QueryRow(ctx, `SELECT `+generationJobColumns+` FROM generation_jobs WHERE id = $1`, id), job)
+	err := scanGenerationJob(r.db.QueryRow(ctx, generationJobSelect+` WHERE gj.id = $1`, id), job)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -59,7 +64,7 @@ func (r *GenerationJobRepo) FindByID(ctx context.Context, id string) (*domain.Ge
 func (r *GenerationJobRepo) FindByProviderJobID(ctx context.Context, provider, providerJobID string) (*domain.GenerationJob, error) {
 	job := &domain.GenerationJob{}
 	err := scanGenerationJob(r.db.QueryRow(ctx,
-		`SELECT `+generationJobColumns+` FROM generation_jobs WHERE provider = $1 AND provider_job_id = $2`,
+		generationJobSelect+` WHERE gj.provider = $1 AND gj.provider_job_id = $2`,
 		provider, providerJobID,
 	), job)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -70,7 +75,7 @@ func (r *GenerationJobRepo) FindByProviderJobID(ctx context.Context, provider, p
 
 func (r *GenerationJobRepo) FindByCalendarID(ctx context.Context, calendarID string) ([]*domain.GenerationJob, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT `+generationJobColumns+` FROM generation_jobs WHERE calendar_id = $1 ORDER BY created_at ASC`,
+		generationJobSelect+` WHERE gj.calendar_id = $1 ORDER BY gj.created_at ASC`,
 		calendarID,
 	)
 	if err != nil {
