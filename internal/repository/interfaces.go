@@ -9,7 +9,7 @@ import (
 type UserRepository interface {
 	Create(ctx context.Context, user *domain.User) error
 	FindByID(ctx context.Context, id string) (*domain.User, error)
-	FindByAppleUserID(ctx context.Context, appleUserID string) (*domain.User, error)
+	FindByProviderID(ctx context.Context, provider, providerUserID string) (*domain.User, error)
 	UpdateTokenBalance(ctx context.Context, userID string, delta int) error
 }
 

@@ -54,7 +54,8 @@ func main() {
 
 	// Auth
 	jwtSvc := auth.NewJWTService(cfg.JWTSecret, cfg.JWTExpiry)
-	appleVerifier := auth.NewAppleSignInVerifier()
+	appleVerifier := auth.NewAppleSignInVerifier(cfg.AppleBundleID)
+	googleVerifier := auth.NewGoogleSignInVerifier(cfg.GoogleIOSClientID)
 
 	// Storage
 	objectStorage, err := s3.New(ctx, cfg)
@@ -83,7 +84,7 @@ func main() {
 	defer genWorker.Stop()
 
 	// Handlers
-	authHandler := v1.NewAuthHandler(appleVerifier, jwtSvc, userRepo)
+	authHandler := v1.NewAuthHandler(appleVerifier, googleVerifier, jwtSvc, userRepo)
 	projectHandler := v1.NewProjectHandler(projectRepo, monthRepo)
 	generationHandler := v1.NewGenerationHandler(
 		projectRepo, monthRepo, jobRepo, tokenRepo, genWorker,

@@ -64,13 +64,13 @@ func (ro *Router) Build() http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public — no auth required
 		r.Post("/auth/apple", ro.authHandler.AppleSignIn)
+		r.Post("/auth/google", ro.authHandler.GoogleSignIn)
 		r.Post("/webhooks/imagegen/{provider}", ro.generationHandler.ImageGenWebhook)
 		r.Post("/webhooks/print-partner", ro.orderHandler.PrintPartnerWebhook)
 		r.Get("/tokens/products", ro.tokenHandler.GetProducts)
 
 		if ro.appEnv != "production" {
 			r.Post("/dev/generate", ro.generationHandler.DevGenerateStub)
-			r.Post("/dev/auth", ro.authHandler.DevAuthSeed)
 		}
 
 		// Authenticated routes

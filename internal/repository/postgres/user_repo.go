@@ -21,18 +21,18 @@ func NewUserRepo(db *pgxpool.Pool) *UserRepo {
 
 func (r *UserRepo) Create(ctx context.Context, user *domain.User) error {
 	query := `
-		INSERT INTO users (apple_user_id, email, token_balance)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (provider, provider_user_id, email, token_balance)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at, updated_at`
-	return r.db.QueryRow(ctx, query, user.AppleUserID, user.Email, user.TokenBalance).
+	return r.db.QueryRow(ctx, query, user.Provider, user.ProviderUserID, user.Email, user.TokenBalance).
 		Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 }
 
 func (r *UserRepo) FindByID(ctx context.Context, id string) (*domain.User, error) {
-	query := `SELECT id, apple_user_id, email, token_balance, created_at, updated_at FROM users WHERE id = $1`
+	query := `SELECT id, provider, provider_user_id, email, token_balance, created_at, updated_at FROM users WHERE id = $1`
 	user := &domain.User{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&user.ID, &user.AppleUserID, &user.Email, &user.TokenBalance, &user.CreatedAt, &user.UpdatedAt,
+		&user.ID, &user.Provider, &user.ProviderUserID, &user.Email, &user.TokenBalance, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -40,11 +40,11 @@ func (r *UserRepo) FindByID(ctx context.Context, id string) (*domain.User, error
 	return user, err
 }
 
-func (r *UserRepo) FindByAppleUserID(ctx context.Context, appleUserID string) (*domain.User, error) {
-	query := `SELECT id, apple_user_id, email, token_balance, created_at, updated_at FROM users WHERE apple_user_id = $1`
+func (r *UserRepo) FindByProviderID(ctx context.Context, provider, providerUserID string) (*domain.User, error) {
+	query := `SELECT id, provider, provider_user_id, email, token_balance, created_at, updated_at FROM users WHERE provider = $1 AND provider_user_id = $2`
 	user := &domain.User{}
-	err := r.db.QueryRow(ctx, query, appleUserID).Scan(
-		&user.ID, &user.AppleUserID, &user.Email, &user.TokenBalance, &user.CreatedAt, &user.UpdatedAt,
+	err := r.db.QueryRow(ctx, query, provider, providerUserID).Scan(
+		&user.ID, &user.Provider, &user.ProviderUserID, &user.Email, &user.TokenBalance, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

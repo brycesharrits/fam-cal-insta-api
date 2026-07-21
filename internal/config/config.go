@@ -36,9 +36,8 @@ type Config struct {
 	S3AccessKey string
 	S3SecretKey string
 
-	AppleTeamID        string
-	AppleKeyID         string
-	ApplePrivateKeyPath string
+	AppleBundleID     string
+	GoogleIOSClientID string
 
 	TokenCosts TokenCosts
 }
@@ -75,9 +74,8 @@ func Load() (*Config, error) {
 		S3AccessKey: requireEnv("S3_ACCESS_KEY"),
 		S3SecretKey: requireEnv("S3_SECRET_KEY"),
 
-		AppleTeamID:        getEnv("APPLE_TEAM_ID", ""),
-		AppleKeyID:         getEnv("APPLE_KEY_ID", ""),
-		ApplePrivateKeyPath: getEnv("APPLE_PRIVATE_KEY_PATH", ""),
+		AppleBundleID:     requireEnv("APPLE_BUNDLE_ID"),
+		GoogleIOSClientID: requireEnv("GOOGLE_IOS_CLIENT_ID"),
 
 		TokenCosts: TokenCosts{
 			FullCalendarGeneration:  costFull,
